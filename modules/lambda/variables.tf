@@ -4,4 +4,5 @@ variable "function_name" {}
 variable "handler" {}
 variable "runtime" {}
 variable "role" {}
+variable "variables" {}
 variable "execution_arn" {}

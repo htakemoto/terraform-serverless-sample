@@ -58,7 +58,16 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
     terraform init
     ```
 
-3. Deploy to AWS
+4. Create Workspace
+
+    ```bash
+    # for dev
+    terraform workspace new dev
+    # for prod
+    terraform workspace new prd
+    ```
+
+4. Deploy to AWS
 
     ```bash
     terraform apply
@@ -66,10 +75,12 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
     terraform apply -var 'aws_profile=YOUR_PROFILE'
     ```
 
-4. Discard Deployment components (optional)
+5. Discard Deployment components (optional)
 
     ```bash
     terraform destroy
+    # or override aws_profile
+    terraform apply -var 'aws_profile=YOUR_PROFILE'
     ```
 
     Note: this does not delete S3 bucket

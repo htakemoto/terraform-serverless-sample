@@ -1,5 +1,3 @@
-
-
 resource "aws_lambda_function" "sample" {
   function_name = var.function_name
 
@@ -9,6 +7,10 @@ resource "aws_lambda_function" "sample" {
   handler = var.handler
   runtime = var.runtime
   role = var.role
+
+  environment {
+    variables = var.variables
+  }
 }
 
 resource "aws_lambda_permission" "apigw" {
