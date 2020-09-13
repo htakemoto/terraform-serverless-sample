@@ -1,7 +1,7 @@
 # Terraform Serverless Sample
 
 Terraform provides infrastracture as code.<br>
-This project is a sample projecct of AWS serverless stack using **API Gateway** and **Lambda**.
+This project is a sample projecct of AWS serverless stack using **API Gateway** and **Lambda** with API Key protection.
 
 ## Preparations
 
@@ -17,6 +17,8 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
 
     ```bash
     aws configure --profile YOUR_PROFILE
+    # do export only if you create profile to eliminate profile option for the rest of AWS interactions
+    export AWS_PROFILE=YOUR_PROFILE
     ```
 
     Note: you can eliminate profile option if you do not plan to use multipile IAM users on your local
@@ -24,20 +26,27 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
 4. Create S3 bucket
 
     ```bash
-    aws s3api create-bucket --bucket=terraform-serverless-sample --region=us-east-1 --profile YOUR_PROFILE
+    # create bucket for terraform state
+    aws s3api create-bucket --bucket=htakemoto-terraform-state-us-east-1 --region=us-east-1
+    # create bucket for lambda package
+    aws s3api create-bucket --bucket=htakemoto-terraform-lambda-us-east-1 --region=us-east-1
+    # set to block all public access
+    aws s3api put-public-access-block \
+    --bucket htakemoto-terraform-state-us-east-1 \
+    --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+    aws s3api put-public-access-block \
+    --bucket htakemoto-terraform-lambda-us-east-1 \
+    --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+    # enable SSE (server side encryption)
+    aws s3api put-bucket-encryption \
+    --bucket htakemoto-terraform-state-us-east-1 \
+    --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
+    aws s3api put-bucket-encryption \
+    --bucket htakemoto-terraform-lambda-us-east-1 \
+    --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
     ```
 
-5. Change AWS profile config at `main.tf`
-
-    ```bash
-    ...
-    variable "aws_profile" {
-        default = "YOUR_PROFILE"
-    }
-    ...
-    ```
-
-6. Create a role for lambda on AWS IAM console and replace the config at `main.tf`
+5. Create a role for lambda on AWS IAM console and replace the config at `main.tf`
 
     ```bash
     role = "arn:aws:iam::xxxxxxxxx:role/serverless-lambda-basic-role"
@@ -45,45 +54,83 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
 
 ## Deployment
 
-1. Upload Lambda code as a zip file to S3
+1. If you use profile on AWS CLI, make sure to set an appropriate profile
 
     ```bash
-    cd src && zip ../sample.zip main.js && ../
-    aws s3 cp sample.zip s3://ht-terraform-serverless-sample/v1.0.0/sample.zip --profile YOUR_PROFILE
+    export AWS_PROFILE=YOUR_PROFILE
     ```
 
-2. Set up Terraform plugins
+2. Prepare package files
 
     ```bash
+    # reinstall dependencies but exclude dev dependencies
+    npm install --production
+    # create a zip
+    zip -r lambda.zip src node_modules
+    ```
+
+3. Upload Lambda code as a zip file to S3
+
+    ```bash
+    # for dev
+    aws s3 cp lambda.zip s3://htakemoto-terraform-lambda-us-east-1/terraform-serverless-sample-dev/lambda.zip --sse AES256
+    # for prod
+    aws s3 cp lambda.zip s3://htakemoto-terraform-lambda-us-east-1/terraform-serverless-sample-prod/lambda.zip --sse AES256
+    ```
+
+4. Set up Terraform plugins
+
+    ```bash
+    cd terraform
     terraform init
     ```
 
-4. Create Workspace
+5. Set Workspace
+
+    For the first time
 
     ```bash
     # for dev
     terraform workspace new dev
     # for prod
-    terraform workspace new prd
+    terraform workspace new prod
     ```
 
-4. Deploy to AWS
+    Next time
+
+    ```bash
+    # for dev
+    terraform workspace select dev
+    # for prod
+    terraform workspace select prod
+    ```
+
+6. Deploy to AWS
 
     ```bash
     terraform apply
-    # or override aws_profile
-    terraform apply -var 'aws_profile=YOUR_PROFILE'
     ```
 
-5. Discard Deployment components (optional)
+    Note: Once complete, you will see the following Outputs
 
     ```bash
-    terraform destroy
-    # or override aws_profile
-    terraform apply -var 'aws_profile=YOUR_PROFILE'
+    api_key = xxxxx
+    base_url = https://xxxxxx.execute-api.us-east-1.amazonaws.com/v1
     ```
 
-    Note: this does not delete S3 bucket
+7. Test the URL using GET method with x-api-key header
+
+    ```bash
+    curl -H 'x-api-key:xxxxx' https://xxxxxx.execute-api.us-east-1.amazonaws.com/v1
+    ```
+
+## Discard Deployment Components
+
+```bash
+terraform destroy
+```
+
+Note: this does not delete S3 bucket
 
 
 ## Terraform Helper Commands

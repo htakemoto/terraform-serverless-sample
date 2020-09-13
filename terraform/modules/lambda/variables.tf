@@ -2,7 +2,9 @@ variable "s3_bucket" {}
 variable "s3_key" {}
 variable "function_name" {}
 variable "handler" {}
+variable "memory_size" {}
 variable "runtime" {}
+variable "timeout" {}
 variable "role" {}
 variable "variables" {}
 variable "execution_arn" {}

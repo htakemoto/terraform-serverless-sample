@@ -1,10 +1,16 @@
+const moment = require("moment");
+
 exports.handler = function (event, context, callback) {
-  var response = {
+  const payload = {
+    message: 'Hello world!!',
+    currentTime: moment().format()
+  }
+  const response = {
     statusCode: 200,
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Type': 'application/json',
     },
-    body: '<p>Hello world!!</p>',
+    body: JSON.stringify(payload),
   }
   callback(null, response)
 }

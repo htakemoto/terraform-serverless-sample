@@ -5,7 +5,9 @@ resource "aws_lambda_function" "sample" {
   s3_key    = var.s3_key
 
   handler = var.handler
+  memory_size = var.memory_size
   runtime = var.runtime
+  timeout = var.timeout
   role = var.role
 
   environment {
