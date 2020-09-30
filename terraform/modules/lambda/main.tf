@@ -1,8 +1,9 @@
 resource "aws_lambda_function" "sample" {
   function_name = var.function_name
 
-  s3_bucket = var.s3_bucket
-  s3_key    = var.s3_key
+  filename = var.filename
+  source_code_hash = var.source_code_hash
+  layers = var.layers
 
   handler = var.handler
   memory_size = var.memory_size

@@ -28,21 +28,13 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
     ```bash
     # create bucket for terraform state
     aws s3api create-bucket --bucket=htakemoto-terraform-state-us-east-1 --region=us-east-1
-    # create bucket for lambda package
-    aws s3api create-bucket --bucket=htakemoto-terraform-lambda-us-east-1 --region=us-east-1
     # set to block all public access
     aws s3api put-public-access-block \
     --bucket htakemoto-terraform-state-us-east-1 \
     --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-    aws s3api put-public-access-block \
-    --bucket htakemoto-terraform-lambda-us-east-1 \
-    --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
     # enable SSE (server side encryption)
     aws s3api put-bucket-encryption \
     --bucket htakemoto-terraform-state-us-east-1 \
-    --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
-    aws s3api put-bucket-encryption \
-    --bucket htakemoto-terraform-lambda-us-east-1 \
     --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
     ```
 
@@ -63,29 +55,24 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
 2. Prepare package files
 
     ```bash
-    # reinstall dependencies but exclude dev dependencies
-    npm install --production
-    # create a zip
-    zip -r lambda.zip src node_modules
+    # make sure to reset existing directory
+    rm -rf layer/nodejs
+    # create directory
+    mkdir -p layer/nodejs
+    # copy package.json and package-lock.json into the directory
+    cp package.json package-lock.json layer/nodejs
+    # install dependencies in layer/nodejs but exclude dev dependencies
+    npm --prefix layer/nodejs install --production
     ```
 
-3. Upload Lambda code as a zip file to S3
-
-    ```bash
-    # for dev
-    aws s3 cp lambda.zip s3://htakemoto-terraform-lambda-us-east-1/terraform-serverless-sample-dev/lambda.zip --sse AES256
-    # for prod
-    aws s3 cp lambda.zip s3://htakemoto-terraform-lambda-us-east-1/terraform-serverless-sample-prod/lambda.zip --sse AES256
-    ```
-
-4. Set up Terraform plugins
+3. Set up Terraform plugins
 
     ```bash
     cd terraform
     terraform init
     ```
 
-5. Set Workspace
+4. Set Workspace
 
     For the first time
 
@@ -105,7 +92,7 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
     terraform workspace select prod
     ```
 
-6. Deploy to AWS
+5. Deploy to AWS
 
     ```bash
     terraform apply
@@ -118,7 +105,7 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
     base_url = https://xxxxxx.execute-api.us-east-1.amazonaws.com/v1
     ```
 
-7. Test the URL using GET method with x-api-key header
+6. Test the URL using GET method with x-api-key header
 
     ```bash
     curl -H 'x-api-key:xxxxx' https://xxxxxx.execute-api.us-east-1.amazonaws.com/v1

@@ -1,11 +1,19 @@
+# Install Terraform AWS Plugin
+
 terraform {
-  backend "s3" {
-    bucket = "htakemoto-terraform-state-us-east-1"
-    key    = "terraform-serverless-sample/terraform.tfstate"
-    region = "us-east-1"
-    encrypt = true
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
   }
 }
+
+provider "aws" {
+  region = "us-east-1"
+  version = "~> 3.0"
+}
+
+# Variables
 
 variable "env" {
   default = {
@@ -21,36 +29,66 @@ variable "env" {
   }
 }
 
+locals {
+  app_name = "terraform-serverless-sample"
+}
+
+# Terraform State File Location
+
 terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-    }
+  backend "s3" {
+    bucket = "htakemoto-terraform-state-us-east-1"
+    key    = "terraform-serverless-sample/terraform.tfstate"
+    region = "us-east-1"
+    encrypt = true
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
-  version = "~> 3.0"
-}
+# API Gateway
 
 module "api-gateway" {
   source = "./modules/api-gateway"
   # plain variables to override api-gateway/variables.tf
-  name = "terraform-serverless-sample-${var.env[terraform.workspace].environment}"
+  name = "${local.app_name}-${var.env[terraform.workspace].environment}"
   description = "Terraform serverless application sample from ${terraform.workspace}"
   stage_name = "v1"
   # referenced variables from lambda/output.tf
   invoke_arn = module.lambda.invoke_arn
 }
 
+# Archive
+
+data "archive_file" "lambda_layer_zip" {
+  type = "zip"
+  source_dir = "../layer"
+  output_path = "../lambda/layer.zip"
+}
+
+data "archive_file" "lambda_function_zip" {
+  type = "zip"
+  source_dir = "../src"
+  output_path = "../lambda/function.zip"
+}
+
+# Lambda Layer
+
+resource "aws_lambda_layer_version" "lambda_layer" {
+  layer_name = "${local.app_name}-${var.env[terraform.workspace].environment}-layer"
+  filename = data.archive_file.lambda_layer_zip.output_path
+  source_code_hash = data.archive_file.lambda_layer_zip.output_base64sha256
+  compatible_runtimes = ["nodejs12.x"]
+}
+
+# Lambda Function
+
 module "lambda" {
   source = "./modules/lambda"
   # plain variables to override lambda/variables.tf
-  function_name = "terraform-serverless-sample-${var.env[terraform.workspace].environment}"
-  s3_bucket = "htakemoto-terraform-lambda-us-east-1"
-  s3_key = "terraform-serverless-sample-${var.env[terraform.workspace].environment}/lambda.zip"
-  handler = "src/main.handler"
+  function_name = "${local.app_name}-${var.env[terraform.workspace].environment}"
+  filename = data.archive_file.lambda_function_zip.output_path
+  source_code_hash = data.archive_file.lambda_function_zip.output_base64sha256
+  layers = [aws_lambda_layer_version.lambda_layer.arn]
+  handler = "main.handler"
   memory_size = 256
   runtime = "nodejs12.x"
   timeout = 10
