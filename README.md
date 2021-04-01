@@ -95,14 +95,17 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
 5. Deploy to AWS
 
     ```bash
+    # check deploy plan
+    terraform plan
+    # deploy
     terraform apply
     ```
 
     Note: Once complete, you will see the following Outputs
 
     ```bash
-    api_key = xxxxx
     base_url = https://xxxxxx.execute-api.us-east-1.amazonaws.com/v1
+    api_key = xxxxx
     ```
 
 6. Test the URL using GET method with x-api-key header
@@ -117,7 +120,7 @@ This project is a sample projecct of AWS serverless stack using **API Gateway** 
 terraform destroy
 ```
 
-Note: this does not delete S3 bucket
+Note: this does not delete S3 bucket where terraform state files are sitting in
 
 
 ## Terraform Helper Commands
